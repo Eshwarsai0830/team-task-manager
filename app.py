@@ -5,12 +5,17 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = "secret_key"
+app.secret_key = os.environ.get("SECRET_KEY", "secret_key")
 
 
 @app.route("/")
 def home():
     return redirect("/login")
+
+
+@app.route("/health")
+def health():
+    return "App is running"
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -32,7 +37,7 @@ def signup():
         except Exception as e:
             cursor.close()
             conn.close()
-            return "Email already exists"
+            return f"Signup error: {e}"
 
         cursor.close()
         conn.close()
@@ -49,6 +54,7 @@ def login():
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
 
@@ -60,8 +66,8 @@ def login():
             session["name"] = user["name"]
             session["role"] = user["role"]
             return redirect("/dashboard")
-        else:
-            return "Invalid credentials"
+
+        return "Invalid credentials"
 
     return render_template("login.html")
 
@@ -76,10 +82,16 @@ def dashboard():
 
     if session.get("role") == "admin":
         cursor.execute("""
-            SELECT tasks.id, tasks.project_id, tasks.title, tasks.description,
-                   tasks.due_date, tasks.priority, tasks.status,
-                   projects.name AS project_name,
-                   users.name AS assigned_user
+            SELECT 
+                tasks.id,
+                tasks.project_id,
+                tasks.title,
+                tasks.description,
+                tasks.due_date,
+                tasks.priority,
+                tasks.status,
+                projects.name AS project_name,
+                users.name AS assigned_user
             FROM tasks
             JOIN projects ON tasks.project_id = projects.id
             JOIN users ON tasks.assigned_to = users.id
@@ -87,10 +99,16 @@ def dashboard():
         """)
     else:
         cursor.execute("""
-            SELECT tasks.id, tasks.project_id, tasks.title, tasks.description,
-                   tasks.due_date, tasks.priority, tasks.status,
-                   projects.name AS project_name,
-                   users.name AS assigned_user
+            SELECT 
+                tasks.id,
+                tasks.project_id,
+                tasks.title,
+                tasks.description,
+                tasks.due_date,
+                tasks.priority,
+                tasks.status,
+                projects.name AS project_name,
+                users.name AS assigned_user
             FROM tasks
             JOIN projects ON tasks.project_id = projects.id
             JOIN users ON tasks.assigned_to = users.id
@@ -168,14 +186,11 @@ def create_task():
         project_id = request.form["project_id"]
         assigned_to = request.form["assigned_to"]
 
-        cursor.execute(
-            """
+        cursor.execute("""
             INSERT INTO tasks 
             (title, description, due_date, priority, project_id, assigned_to)
             VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            (title, description, due_date, priority, project_id, assigned_to)
-        )
+        """, (title, description, due_date, priority, project_id, assigned_to))
 
         conn.commit()
         cursor.close()
@@ -206,12 +221,87 @@ def update_status(task_id, status):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE tasks SET status=%s WHERE id=%s", (status, task_id))
+
+    cursor.execute(
+        "UPDATE tasks SET status=%s WHERE id=%s",
+        (status, task_id)
+    )
+
     conn.commit()
     cursor.close()
     conn.close()
 
     return redirect("/dashboard")
+
+
+@app.route("/edit_task/<int:task_id>", methods=["GET", "POST"])
+def edit_task(task_id):
+    if "user_id" not in session:
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access Denied: Only admin can edit tasks"
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == "POST":
+        title = request.form["title"]
+        description = request.form["description"]
+
+        cursor.execute(
+            "UPDATE tasks SET title=%s, description=%s WHERE id=%s",
+            (title, description, task_id)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect("/dashboard")
+
+    cursor.execute("SELECT * FROM tasks WHERE id=%s", (task_id,))
+    task = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return render_template("edit_task.html", task=task)
+
+
+@app.route("/edit_project/<int:project_id>", methods=["GET", "POST"])
+def edit_project(project_id):
+    if "user_id" not in session:
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access Denied: Only admin can edit projects"
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == "POST":
+        name = request.form["name"]
+        description = request.form["description"]
+
+        cursor.execute(
+            "UPDATE projects SET name=%s, description=%s WHERE id=%s",
+            (name, description, project_id)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return redirect("/dashboard")
+
+    cursor.execute("SELECT * FROM projects WHERE id=%s", (project_id,))
+    project = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return render_template("edit_project.html", project=project)
 
 
 @app.route("/logout")
@@ -220,6 +310,8 @@ def logout():
     return redirect("/login")
 
 
-# 🔥 IMPORTANT FIX FOR RAILWAY
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080))
+    )
