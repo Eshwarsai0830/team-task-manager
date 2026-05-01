@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db_connection
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "secret_key"
@@ -28,7 +29,7 @@ def signup():
                 (name, email, password, "member")
             )
             conn.commit()
-        except:
+        except Exception as e:
             cursor.close()
             conn.close()
             return "Email already exists"
@@ -133,10 +134,12 @@ def create_project():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
         cursor.execute(
             "INSERT INTO projects (name, description, created_by) VALUES (%s, %s, %s)",
             (name, description, session["user_id"])
         )
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -211,81 +214,12 @@ def update_status(task_id, status):
     return redirect("/dashboard")
 
 
-@app.route("/edit_task/<int:task_id>", methods=["GET", "POST"])
-def edit_task(task_id):
-    if "user_id" not in session:
-        return redirect("/login")
-
-    if session.get("role") != "admin":
-        return "Access Denied: Only admin can edit tasks"
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    if request.method == "POST":
-        title = request.form["title"]
-        description = request.form["description"]
-
-        cursor.execute(
-            "UPDATE tasks SET title=%s, description=%s WHERE id=%s",
-            (title, description, task_id)
-        )
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return redirect("/dashboard")
-
-    cursor.execute("SELECT * FROM tasks WHERE id=%s", (task_id,))
-    task = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    return render_template("edit_task.html", task=task)
-
-
-@app.route("/edit_project/<int:project_id>", methods=["GET", "POST"])
-def edit_project(project_id):
-    if "user_id" not in session:
-        return redirect("/login")
-
-    if session.get("role") != "admin":
-        return "Access Denied: Only admin can edit projects"
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    if request.method == "POST":
-        name = request.form["name"]
-        description = request.form["description"]
-
-        cursor.execute(
-            "UPDATE projects SET name=%s, description=%s WHERE id=%s",
-            (name, description, project_id)
-        )
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return redirect("/dashboard")
-
-    cursor.execute("SELECT * FROM projects WHERE id=%s", (project_id,))
-    project = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    return render_template("edit_project.html", project=project)
-
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
 
 
+# 🔥 IMPORTANT FIX FOR RAILWAY
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
