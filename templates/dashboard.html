@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subtitle {
+            color: #555;
+            margin-top: -10px;
+        }
+
+        .logout-btn {
+            padding: 8px 12px;
+            background-color: red;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 150px;
+            text-align: center;
+            border: 1px solid #ccc;
+        }
+
+        .total-card { background-color: #e3f2fd; }
+        .todo-card { background-color: #ffcdd2; }
+        .progress-card { background-color: #ffe0b2; }
+        .done-card { background-color: #c8e6c9; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .todo-row { background-color: #ffcccc; }
+        .progress-row { background-color: #ffe0b3; }
+        .done-row { background-color: #ccffcc; }
+
+        .btn {
+            padding: 5px 8px;
+            text-decoration: none;
+            border: 1px solid black;
+            margin: 2px;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        .todo { background-color: lightgray; }
+        .progress { background-color: lightblue; }
+        .done { background-color: lightgreen; }
+        .edit { background-color: orange; }
+        .edit-project { background-color: purple; color: white; }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <div>
+        <h1>Team Task Manager</h1>
+
+        {% if role == 'admin' %}
+            <p class="subtitle">Task Tracking System</p>
+        {% else %}
+            <p class="subtitle">Your Assigned Tasks</p>
+        {% endif %}
+    </div>
+
+    <a href="/logout" class="logout-btn">Logout</a>
+</div>
+
+<!-- ✅ STATS ONLY FOR ADMIN -->
+{% if role == 'admin' %}
+<div class="stats-container">
+    <div class="stat-card total-card">
+        <h3>Total Tasks</h3>
+        <h2>{{ total_tasks }}</h2>
+    </div>
+
+    <div class="stat-card todo-card">
+        <h3>To Do</h3>
+        <h2>{{ todo_tasks }}</h2>
+    </div>
+
+    <div class="stat-card progress-card">
+        <h3>In Progress</h3>
+        <h2>{{ progress_tasks }}</h2>
+    </div>
+
+    <div class="stat-card done-card">
+        <h3>Done</h3>
+        <h2>{{ done_tasks }}</h2>
+    </div>
+</div>
+{% endif %}
+
+<!-- ✅ ADMIN ACTIONS -->
+{% if role == 'admin' %}
+<a href="/create_project">Create Project</a> |
+<a href="/create_task">Create Task</a>
+{% endif %}
+
+<br><br>
+
+<table border="1">
+    <tr>
+        <th>ID</th>
+        <th>Task</th>
+        <th>Description</th>
+        <th>Project</th>
+        <th>Assigned To</th>
+        <th>Due Date</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for task in tasks %}
+    <tr class="
+    {% if task.status == 'To Do' %}
+        todo-row
+    {% elif task.status == 'In Progress' %}
+        progress-row
+    {% elif task.status == 'Done' %}
+        done-row
+    {% endif %}
+    ">
+        <td>{{ task.id }}</td>
+        <td>{{ task.title }}</td>
+        <td>{{ task.description }}</td>
+        <td>{{ task.project_name }}</td>
+        <td>{{ task.assigned_user }}</td>
+        <td>{{ task.due_date }}</td>
+        <td>{{ task.priority }}</td>
+
+        <td>
+            {% if task.status == 'To Do' %}
+                <span style="color:red; font-weight:bold;">{{ task.status }}</span>
+            {% elif task.status == 'In Progress' %}
+                <span style="color:orange; font-weight:bold;">{{ task.status }}</span>
+            {% elif task.status == 'Done' %}
+                <span style="color:green; font-weight:bold;">{{ task.status }}</span>
+            {% endif %}
+        </td>
+
+        <td>
+            <a class="btn todo" href="/update_status/{{ task.id }}/To Do">To Do</a>
+            <a class="btn progress" href="/update_status/{{ task.id }}/In Progress">In Progress</a>
+            <a class="btn done" href="/update_status/{{ task.id }}/Done">Done</a>
+
+            {% if role == 'admin' %}
+            <br><br>
+            <a class="btn edit" href="/edit_task/{{ task.id }}">Edit Task</a>
+            <a class="btn edit-project" href="/edit_project/{{ task.project_id }}">Edit Project</a>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<div class="footer">
+    Developed by Kuntala Eshwarsai
+</div>
+
+</body>
+</html>
