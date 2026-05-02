@@ -1,9 +1,10 @@
-import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
+import os
 
 def get_db_connection():
-    return psycopg2.connect(
-        os.environ.get("DATABASE_URL"),
-        cursor_factory=RealDictCursor
-    )
+    try:
+        conn = psycopg2.connect(os.environ.get("DATABASE_URL"))
+        return conn
+    except Exception as e:
+        print("DB Connection Error:", e)
+        return None
