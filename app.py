@@ -13,6 +13,53 @@ def home():
     return redirect("/login")
 
 
+@app.route("/create_tables")
+def create_tables():
+    conn = get_db_connection()
+    if conn is None:
+        return "Database connection failed ❌"
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            email TEXT UNIQUE,
+            password TEXT,
+            role TEXT DEFAULT 'member'
+        );
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            description TEXT,
+            created_by INTEGER
+        );
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title TEXT,
+            description TEXT,
+            due_date DATE,
+            priority TEXT,
+            status TEXT DEFAULT 'To Do',
+            project_id INTEGER,
+            assigned_to INTEGER
+        );
+    """)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return "Tables created successfully ✅"
+
+
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -151,6 +198,5 @@ def logout():
     return redirect("/login")
 
 
-# ✅ For local testing only
 if __name__ == "__main__":
     app.run(debug=True)
