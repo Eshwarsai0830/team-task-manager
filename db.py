@@ -1,16 +1,25 @@
-import mysql.connector
 import os
+import mysql.connector
 from urllib.parse import urlparse
 
 def get_db_connection():
-    url = os.getenv("DATABASE_URL")
+    try:
+        url = os.getenv("DATABASE_URL")
 
-    parsed = urlparse(url)
+        if not url:
+            print("DATABASE_URL missing ❌")
+            return None
 
-    return mysql.connector.connect(
-        host=parsed.hostname,
-        user=parsed.username,
-        password=parsed.password,
-        database=parsed.path.lstrip('/'),
-        port=parsed.port
-    )
+        parsed = urlparse(url)
+
+        return mysql.connector.connect(
+            host=parsed.hostname,
+            user=parsed.username,
+            password=parsed.password,
+            database=parsed.path.lstrip('/'),
+            port=parsed.port
+        )
+
+    except Exception as e:
+        print("DB ERROR:", e)
+        return None
